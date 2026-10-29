@@ -1,0 +1,47 @@
+*** Набросок исполняемой спецификации одной полной карты MP_ij.
+*** Записка «Прототип GTRN: от спецификации к макету», р1.
+*** Имя TNOM здесь — пара (частная карта, номер акта); код полной карты опущен.
+
+fmod GTRN-MAP is
+  protecting NAT .
+  sorts Name Rec RecSet PMap PMapSet FMap .
+  subsort Rec < RecSet .
+  subsort PMap < PMapSet .
+
+  op tn : Nat Nat -> Name [ctor] .                  --- Tn : частная карта : акт
+  op rec : Name Nat -> Rec [ctor] .                 --- запись: имя и данные
+  op none : -> RecSet [ctor] .
+  op __ : RecSet RecSet -> RecSet [ctor assoc comm id: none] .
+  --- частная карта: номер, родитель (шлюз), ядро ND, число актов, записи
+  op pm : Nat Nat Nat Nat RecSet -> PMap [ctor] .
+  op nil : -> PMapSet [ctor] .
+  op _;_ : PMapSet PMapSet -> PMapSet [ctor assoc comm id: nil] .
+  --- полная карта: частные карты, ёмкость частной карты, запас, номер следующей
+  op fm : PMapSet Nat Nat Nat -> FMap [ctor] .
+
+  vars K P N A C R Q D : Nat .
+  var RS : RecSet .
+  var PS : PMapSet .
+
+  --- население (нас_j): запись ставится в частную карту K,
+  --- её имя — следующий номер акта в этой карте (А1)
+  op pop : Nat Nat FMap ~> FMap .
+  ceq pop(K, D, fm(pm(K, P, N, A, RS) ; PS, C, R, Q))
+    = fm(pm(K, P, N, s A, RS rec(tn(K, s A), D)) ; PS, C, R, Q)
+    if A < C .
+  --- разделение (раз_j, А9): переполненная карта K отдаёт место новой карте Q
+  --- из запаса; ядро N копируется; шлюз — родитель K; записи K остаются (А3)
+  ceq pop(K, D, fm(pm(K, P, N, A, RS) ; PS, C, s R, Q))
+    = pop(Q, D, fm(pm(K, P, N, A, RS) ; pm(Q, K, N, 0, none) ; PS, C, R, s Q))
+    if A >= C .
+  --- запаса нет: равенства не применяются, значение остаётся
+  --- на уровне рода [FMap] — это и есть «значения нет» частичной операции
+  --- проверка А1 и А3: каждая запись лежит в частной карте, номер которой
+  --- стоит в её имени, — запись не перенесена после разделения
+  op born-here : PMapSet -> Bool .
+  op born-in : Nat RecSet -> Bool .
+  eq born-in(K, none) = true .
+  eq born-in(K, rec(tn(P, A), D) RS) = (K == P) and born-in(K, RS) .
+  eq born-here(nil) = true .
+  eq born-here(pm(K, P, N, A, RS) ; PS) = born-in(K, RS) and born-here(PS) .
+endfm
